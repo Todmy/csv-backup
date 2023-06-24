@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A set of scripts for downloading db tables for snapshot labs",
   "repository": "Todmy/csv-backup",
-  "main": "dist/index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "lint": "eslint --ext .ts . --fix",
     "test": "echo \"Error: no test specified\" && exit 1",
