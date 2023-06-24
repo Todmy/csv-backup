@@ -18,6 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^20.3.1",
+    "bluebird": "^3.7.2",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.3.1",
     "dropbox": "^10.34.0",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@snapshot-labs/eslint-config": "^0.1.0-beta.7",
     "@snapshot-labs/prettier-config": "^0.1.0-beta.7",
+    "@types/bluebird": "^3.5.38",
     "eslint": "^8.43.0",
     "nodemon": "^2.0.22",
     "prettier": "^2.8.8"
