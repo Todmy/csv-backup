@@ -2,6 +2,7 @@ import * as csvWriter from 'csv-writer';
 import path from 'path';
 import fs from 'fs';
 import csvParser from 'csv-parser';
+import { TableDetails } from './db-scrapper';
 
 const localRootFolder = process.env.LOCAL_ROOT_FOLDER || 'dune';
 
@@ -40,8 +41,13 @@ export async function writeChunkToCSV(columns: string[], data: any[], chunkN: nu
   await writer.writeRecords(processedData);
 }
 
-export async function mergeCSVFiles(outputFileName: string, totalChunks: number): Promise<string> {
+export async function mergeCSVFiles(
+  outputFileName: string,
+  totalChunks: number,
+  table: TableDetails
+): Promise<string> {
   const outputFilePath = path.join(localRootFolder, outputFileName);
+  let writer: any;
   let headers: string[] | null = null;
 
   for (let i = 0; i < totalChunks; i++) {
@@ -52,28 +58,26 @@ export async function mergeCSVFiles(outputFileName: string, totalChunks: number)
     const readStream = fs.createReadStream(filePath);
     const parser = readStream.pipe(csvParser());
 
+    const buffer = [];
     for await (const record of parser) {
       if (headers === null) {
         headers = Object.keys(record);
-        const writer = csvWriter.createObjectCsvWriter({
+        writer = csvWriter.createObjectCsvWriter({
           path: outputFilePath,
           header: headers.map(key => ({ id: key, title: key })),
           append: false,
           alwaysQuote: true
         });
-
-        await writer.writeRecords([record]);
-      } else {
-        const writer = csvWriter.createObjectCsvWriter({
-          path: outputFilePath,
-          header: headers.map(key => ({ id: key, title: key })),
-          append: true,
-          alwaysQuote: true
-        });
-
-        await writer.writeRecords([record]);
       }
+
+      // forced to filter it here instead of query, because of DB overload
+      if (table.skip && table.skip(record)) continue;
+
+      buffer.push(record);
     }
+    await writer.writeRecords(buffer);
+
+    console.log(`Chunk ${i} of ${totalChunks} merged`);
   }
 
   return outputFilePath;

@@ -1,18 +1,20 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import { RowDataPacket } from './mysql';
 import { scrape } from './db-scrapper';
 import { uploadToDropbox, removeOtherFolders } from './dropbox';
 
 const tables = [
-  { name: 'users' }
+  // { name: 'users' }
   // { name: 'follows' },
   // { name: 'spaces' },
   // { name: 'proposals' },
-  // {
-  //   name: 'votes',
-  //   where: "WHERE TRIM(space) <> 'linea-build.eth'"
-  // }
+  {
+    name: 'votes',
+    skip: (row: RowDataPacket) => row.space === 'linea-build.eth'
+    // where: "WHERE TRIM(space) <> 'linea-build.eth'"
+  }
 ];
 
 const rootFolder = process.env.DROPBOX_ROOT_FOLDER || 'dune';

@@ -5,23 +5,28 @@ import { writeChunkToCSV, cleanUpLocalFiles, mergeCSVFiles } from './csv-process
 const threads = Number(process.env.N_THREADS);
 const querySize = Number(process.env.QUERY_SIZE);
 
-type TableDetails = {
+export type TableDetails = {
   name: string;
   where?: string;
+  skip?: (row: RowDataPacket) => boolean;
 };
 
-async function fetchChunk(
-  table: TableDetails,
-  { offset, limit }: QueryMeta
-): Promise<[string[], any[]]> {
-  console.log(`Fetching ${limit} entries from ${table.name} starting from ${offset}`);
-  const [rowData, fields]: [RowDataPacket[], FieldPacket[]] = await db.query(
-    `SELECT * FROM ${table.name} ${table.where || ''} 
-      ORDER BY created ASC LIMIT ? OFFSET ?;`,
-    [limit, offset]
-  );
-  console.log(`Fetched ${rowData.length} entries from ${table.name} starting from ${offset}`);
-  return [fields.map(field => field.name), rowData];
+async function fetchChunk(table: TableDetails, meta: QueryMeta): Promise<[string[], any[]]> {
+  try {
+    const { offset, limit } = meta;
+    console.log(`Fetching ${limit} entries from ${table.name} starting from ${offset}`);
+    const [rowData, fields]: [RowDataPacket[], FieldPacket[]] = await db.query(
+      `SELECT * FROM ${table.name} ${table.where || ''} 
+        ORDER BY created ASC LIMIT ? OFFSET ?;`,
+      [limit, offset]
+    );
+    console.log(`Fetched ${rowData.length} entries from ${table.name} starting from ${offset}`);
+    return [fields.map(field => field.name), rowData];
+  } catch (error) {
+    console.error(error);
+    console.log('Retrying...');
+    return fetchChunk(table, meta);
+  }
 }
 
 async function getEntryCount(table: TableDetails): Promise<number> {
@@ -68,7 +73,7 @@ async function scrape(table: TableDetails): Promise<{ path: string }> {
   console.log('All threads finished. Merging files...');
   const today = new Date().toISOString().split('T')[0];
   const outputFileName = `snapshot-hub-mainnet-${today}-${table.name}.csv`;
-  const pathToFile = await mergeCSVFiles(outputFileName, indexer.maxTotalItems);
+  const pathToFile = await mergeCSVFiles(outputFileName, indexer.maxTotalItems, table);
 
   return { path: pathToFile };
 }
