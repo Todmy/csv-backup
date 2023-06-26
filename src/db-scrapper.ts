@@ -1,68 +1,27 @@
-import db, { RowDataPacket, FieldPacket } from './mysql';
-import QueryIndexer, { QueryMeta } from './QueryIndexer';
+import qm, { ITableQueryDetails, IQueryMeta, RowDataPacket } from './QueryManager';
+import QueryIndexer from './QueryIndexer';
 import { writeChunkToCSV, cleanUpLocalFiles, mergeCSVFiles } from './csv-processor';
 
 const threads = Number(process.env.N_THREADS);
-const querySize = Number(process.env.QUERY_SIZE);
+const localTmpFolder = process.env.LOCAL_TMP_FOLDER || 'tmp';
 
-export type TableDetails = {
-  name: string;
-  where?: string;
+export interface ITableParseParams extends ITableQueryDetails {
   skip?: (row: RowDataPacket) => boolean;
-};
-
-async function fetchChunk(table: TableDetails, meta: QueryMeta): Promise<[string[], any[]]> {
-  try {
-    const { offset, limit } = meta;
-    console.log(`Fetching ${limit} entries from ${table.name} starting from ${offset}`);
-    const [rowData, fields]: [RowDataPacket[], FieldPacket[]] = await db.query(
-      `SELECT * FROM ${table.name} ${table.where || ''} 
-        ORDER BY created ASC LIMIT ? OFFSET ?;`,
-      [limit, offset]
-    );
-    console.log(`Fetched ${rowData.length} entries from ${table.name} starting from ${offset}`);
-    return [fields.map(field => field.name), rowData];
-  } catch (error) {
-    console.error(error);
-    console.log('Retrying...');
-    return fetchChunk(table, meta);
-  }
 }
 
-async function getEntryCount(table: TableDetails): Promise<number> {
-  const selector = `COUNT(*)`;
-  let query = `SELECT ${selector} FROM ${table.name}`;
-
-  if (table.where) {
-    query += ` ${table.where}`;
-  }
-
-  const [rowData]: [RowDataPacket[], FieldPacket[]] = await db.query(query, [
-    selector,
-    table.name,
-    table.where || ''
-  ]);
-
-  return rowData[0][selector];
-}
-
-async function workerThread(table: TableDetails, indexer: QueryIndexer) {
-  let meta: QueryMeta | undefined;
+async function workerThread(table: ITableQueryDetails, indexer: QueryIndexer) {
+  let meta: IQueryMeta | undefined;
   while ((meta = indexer.next())) {
-    const [fields, data] = await fetchChunk(table, meta);
-    if (data.length === 0) break;
+    const [fields, data] = await qm.fetchChunk(table, meta);
     await writeChunkToCSV(fields, data, meta.chunkN);
   }
 }
 
-async function scrape(table: TableDetails): Promise<{ path: string }> {
-  await cleanUpLocalFiles();
-  const totalRecords = await getEntryCount(table);
-
-  console.log(`Found ${totalRecords} entries in table ${table.name}`);
+async function scrape(table: ITableQueryDetails): Promise<{ path: string }> {
+  await cleanUpLocalFiles(localTmpFolder);
 
   const promises = [];
-  const indexer = new QueryIndexer(totalRecords, querySize);
+  const indexer = await QueryIndexer.init(qm, table);
 
   for (let i = 0; i < threads; i++) {
     const promise = workerThread(table, indexer);
