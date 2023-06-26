@@ -9,9 +9,15 @@ const localUploadsFolder = process.env.LOCAL_UPLOADS_FOLDER || 'uploads';
 
 const getChunkName = (chunkN: number) => `output_${chunkN}.csv`;
 
-export async function cleanUpLocalFiles(folder: string) {
-  if (fs.existsSync(folder)) {
-    fs.rmSync(folder, { recursive: true });
+export async function cleanUpTmp() {
+  if (fs.existsSync(localTmpFolder)) {
+    fs.rmSync(localTmpFolder, { recursive: true });
+  }
+}
+
+export async function cleanUpUploads() {
+  if (fs.existsSync(localUploadsFolder)) {
+    fs.rmSync(localUploadsFolder, { recursive: true });
   }
 }
 

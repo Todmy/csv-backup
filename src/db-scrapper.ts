@@ -1,9 +1,9 @@
 import qm, { ITableQueryDetails, IQueryMeta, RowDataPacket } from './QueryManager';
 import QueryIndexer from './QueryIndexer';
-import { writeChunkToCSV, cleanUpLocalFiles, mergeCSVFiles } from './csv-processor';
+import { writeChunkToCSV, cleanUpTmp, mergeCSVFiles } from './csv-processor';
+export { RowDataPacket } from './QueryManager';
 
 const threads = Number(process.env.N_THREADS);
-const localTmpFolder = process.env.LOCAL_TMP_FOLDER || 'tmp';
 
 export interface ITableParseParams extends ITableQueryDetails {
   skip?: (row: RowDataPacket) => boolean;
@@ -18,7 +18,7 @@ async function workerThread(table: ITableQueryDetails, indexer: QueryIndexer) {
 }
 
 async function scrape(table: ITableQueryDetails): Promise<{ path: string }> {
-  await cleanUpLocalFiles(localTmpFolder);
+  await cleanUpTmp();
 
   const promises = [];
   const indexer = await QueryIndexer.init(qm, table);

@@ -1,19 +1,19 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { RowDataPacket } from './mysql';
-import { scrape } from './db-scrapper';
+import { scrape, RowDataPacket } from './db-scrapper';
+import { cleanUpUploads } from './csv-processor';
 import { uploadToDropbox, removeOtherFolders } from './dropbox';
 
 const tables = [
-  // { name: 'users' }
-  // { name: 'follows' },
-  // { name: 'spaces' },
-  // { name: 'proposals' },
+  { name: 'users', createdField: 'created' },
+  { name: 'follows', createdField: 'created' },
+  { name: 'spaces', createdField: 'created_at' },
+  { name: 'proposals', createdField: 'created' },
   {
     name: 'votes',
+    createdField: 'created',
     skip: (row: RowDataPacket) => row.space === 'linea-build.eth'
-    // where: "WHERE TRIM(space) <> 'linea-build.eth'"
   }
 ];
 
@@ -21,9 +21,12 @@ const rootFolder = process.env.DROPBOX_ROOT_FOLDER || 'dune';
 
 async function main() {
   const uploadedTables = [];
-  // date in format YYYY-MM-DD
+
+  await cleanUpUploads();
+
   const thisDate = new Date().toISOString().split('T')[0];
   const dropboxFolderName = `${rootFolder}/upload-${thisDate}`;
+
   try {
     for (const table of tables) {
       const { path } = await scrape(table);
