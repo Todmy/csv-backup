@@ -2,24 +2,25 @@ import * as csvWriter from 'csv-writer';
 import path from 'path';
 import fs from 'fs';
 import csvParser from 'csv-parser';
-import { TableDetails } from './db-scrapper';
+import { ITableParseParams } from './db-scrapper';
 
-const localRootFolder = process.env.LOCAL_ROOT_FOLDER || 'dune';
+const localTmpFolder = process.env.LOCAL_TMP_FOLDER || 'tmp';
+const localUploadsFolder = process.env.LOCAL_UPLOADS_FOLDER || 'uploads';
 
 const getChunkName = (chunkN: number) => `output_${chunkN}.csv`;
 
-export async function cleanUpLocalFiles() {
-  if (fs.existsSync(localRootFolder)) {
-    fs.rmSync(localRootFolder, { recursive: true });
+export async function cleanUpLocalFiles(folder: string) {
+  if (fs.existsSync(folder)) {
+    fs.rmSync(folder, { recursive: true });
   }
 }
 
 export async function writeChunkToCSV(columns: string[], data: any[], chunkN: number) {
   const fileName = getChunkName(chunkN);
-  const dist = path.join(localRootFolder, fileName);
+  const dist = path.join(localTmpFolder, fileName);
 
-  if (!fs.existsSync(localRootFolder)) {
-    fs.mkdirSync(localRootFolder, { recursive: true });
+  if (!fs.existsSync(localTmpFolder)) {
+    fs.mkdirSync(localTmpFolder, { recursive: true });
   }
 
   const processedData = data.map(row =>
@@ -44,19 +45,25 @@ export async function writeChunkToCSV(columns: string[], data: any[], chunkN: nu
 export async function mergeCSVFiles(
   outputFileName: string,
   totalChunks: number,
-  table: TableDetails
+  table: ITableParseParams
 ): Promise<string> {
-  const outputFilePath = path.join(localRootFolder, outputFileName);
+  const outputFilePath = path.join(localUploadsFolder, outputFileName);
+
+  if (!fs.existsSync(localUploadsFolder)) {
+    fs.mkdirSync(localUploadsFolder, { recursive: true });
+  }
+
   let writer: any;
   let headers: string[] | null = null;
 
   for (let i = 0; i < totalChunks; i++) {
     console.log(`Merging chunk ${i} of ${totalChunks}`);
     const fileName = `output_${i}.csv`;
-    const filePath = path.join(localRootFolder, fileName);
+    const filePath = path.join(localTmpFolder, fileName);
 
     const readStream = fs.createReadStream(filePath);
     const parser = readStream.pipe(csvParser());
+    readStream.on('end', () => readStream.close());
 
     const buffer = [];
     for await (const record of parser) {
@@ -78,6 +85,7 @@ export async function mergeCSVFiles(
     await writer.writeRecords(buffer);
 
     console.log(`Chunk ${i} of ${totalChunks} merged`);
+    fs.unlinkSync(filePath);
   }
 
   return outputFilePath;
