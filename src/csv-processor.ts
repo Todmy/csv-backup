@@ -10,7 +10,7 @@ const getChunkName = (chunkN: number) => `output_${chunkN}.csv`;
 
 export async function cleanUpLocalFiles() {
   if (fs.existsSync(localRootFolder)) {
-    fs.rmdirSync(localRootFolder, { recursive: true });
+    fs.rmSync(localRootFolder, { recursive: true });
   }
 }
 
