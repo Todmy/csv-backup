@@ -6,6 +6,7 @@ import { ITableParseParams } from './db-scrapper';
 
 const localTmpFolder = process.env.LOCAL_TMP_FOLDER || 'tmp';
 const localUploadsFolder = process.env.LOCAL_UPLOADS_FOLDER || 'uploads';
+const maxFileSize = Number(process.env.MAX_FILE_SIZE) || 100 * 1024 * 1024;
 
 const getChunkName = (chunkN: number) => `output_${chunkN}.csv`;
 
@@ -48,12 +49,15 @@ export async function writeChunkToCSV(columns: string[], data: any[], chunkN: nu
   await writer.writeRecords(processedData);
 }
 
+// TODO: refactor this function (too complex)
 export async function mergeCSVFiles(
   outputFileName: string,
   totalChunks: number,
   table: ITableParseParams
-): Promise<string> {
-  const outputFilePath = path.join(localUploadsFolder, outputFileName);
+): Promise<string[]> {
+  const outputFilePaths = [];
+  let currentOutputFileIndex = 0;
+  let currentOutputFileSize = 0;
 
   if (!fs.existsSync(localUploadsFolder)) {
     fs.mkdirSync(localUploadsFolder, { recursive: true });
@@ -67,6 +71,15 @@ export async function mergeCSVFiles(
     const fileName = `output_${i}.csv`;
     const filePath = path.join(localTmpFolder, fileName);
 
+    const chunkFileSize = fs.statSync(filePath).size;
+
+    if (currentOutputFileSize + chunkFileSize > maxFileSize) {
+      currentOutputFileIndex += 1;
+      currentOutputFileSize = 0;
+      writer = null;
+      headers = null;
+    }
+
     const readStream = fs.createReadStream(filePath);
     const parser = readStream.pipe(csvParser());
     readStream.on('end', () => readStream.close());
@@ -75,6 +88,16 @@ export async function mergeCSVFiles(
     for await (const record of parser) {
       if (headers === null) {
         headers = Object.keys(record);
+
+        const fileName = path.basename(outputFileName, '.csv');
+
+        const outputFilePath = path.join(
+          localUploadsFolder,
+          `${fileName}_${currentOutputFileIndex}.csv`
+        );
+
+        outputFilePaths.push(outputFilePath);
+
         writer = csvWriter.createObjectCsvWriter({
           path: outputFilePath,
           header: headers.map(key => ({ id: key, title: key })),
@@ -88,11 +111,13 @@ export async function mergeCSVFiles(
 
       buffer.push(record);
     }
+
     await writer.writeRecords(buffer);
+    currentOutputFileSize += chunkFileSize;
 
     console.log(`Chunk ${i + 1} of ${totalChunks} merged`);
     fs.unlinkSync(filePath);
   }
 
-  return outputFilePath;
+  return outputFilePaths;
 }

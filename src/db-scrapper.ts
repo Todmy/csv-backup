@@ -17,7 +17,7 @@ async function workerThread(table: ITableQueryDetails, indexer: QueryIndexer) {
   }
 }
 
-async function scrape(table: ITableQueryDetails): Promise<{ path: string }> {
+async function scrape(table: ITableQueryDetails): Promise<string[]> {
   await cleanUpTmp();
 
   const promises = [];
@@ -32,9 +32,7 @@ async function scrape(table: ITableQueryDetails): Promise<{ path: string }> {
   console.log('All threads finished. Merging files...');
   const today = new Date().toISOString().split('T')[0];
   const outputFileName = `snapshot-hub-mainnet-${today}-${table.name}.csv`;
-  const pathToFile = await mergeCSVFiles(outputFileName, indexer.maxTotalItems, table);
-
-  return { path: pathToFile };
+  return mergeCSVFiles(outputFileName, indexer.maxTotalItems, table);
 }
 
 export { scrape };
