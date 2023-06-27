@@ -17,26 +17,25 @@ const tables = [
   }
 ];
 
-const rootFolder = process.env.DROPBOX_ROOT_FOLDER || 'dune';
-
 async function main() {
   const uploadedTables = [];
 
   await cleanUpUploads();
 
   const thisDate = new Date().toISOString().split('T')[0];
-  const dropboxFolderName = `${rootFolder}/upload-${thisDate}`;
+  const newUploadFolderName = `upload-${thisDate}`;
 
   try {
     for (const table of tables) {
       const { path } = await scrape(table);
-      const { url } = await uploadToDropbox({ localPath: path, folder: dropboxFolderName });
+      const { url } = await uploadToDropbox({ localPath: path, folder: newUploadFolderName });
       uploadedTables.push({ name: table.name, url });
     }
   } catch (error) {
     console.error(error);
   } finally {
-    await removeOtherFolders({ except: dropboxFolderName });
+    console.log('Uploaded tables:', uploadedTables);
+    await removeOtherFolders({ exceptFolder: newUploadFolderName });
   }
 }
 
