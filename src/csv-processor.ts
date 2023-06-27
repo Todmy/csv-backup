@@ -63,7 +63,7 @@ export async function mergeCSVFiles(
   let headers: string[] | null = null;
 
   for (let i = 0; i < totalChunks; i++) {
-    console.log(`Merging chunk ${i} of ${totalChunks}`);
+    console.log(`Merging chunk ${i + 1} of ${totalChunks}`);
     const fileName = `output_${i}.csv`;
     const filePath = path.join(localTmpFolder, fileName);
 
@@ -90,7 +90,7 @@ export async function mergeCSVFiles(
     }
     await writer.writeRecords(buffer);
 
-    console.log(`Chunk ${i} of ${totalChunks} merged`);
+    console.log(`Chunk ${i + 1} of ${totalChunks} merged`);
     fs.unlinkSync(filePath);
   }
 
