@@ -1,9 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { scrape, RowDataPacket } from './db-scrapper';
+import { scrape } from './db-scrapper';
 import { cleanUpUploads } from './csv-processor';
-import { uploadToDropbox, removeOtherFolders } from './dropbox';
+import { uploadToDropbox, removeOtherFolders } from './do-spaces';
+import tables from './tables';
 
 const shouldRemoveOldUploads = process.env.REMOVE_OLD_UPLOADS === 'true';
 
@@ -11,18 +12,6 @@ type UploadedFileDetails = {
   name: string;
   url: string;
 };
-
-const tables = [
-  { name: 'users', createdField: 'created' },
-  { name: 'follows', createdField: 'created' },
-  { name: 'spaces', createdField: 'created_at' },
-  { name: 'proposals', createdField: 'created' },
-  {
-    name: 'votes',
-    createdField: 'created',
-    skip: (row: RowDataPacket) => row.space === 'linea-build.eth'
-  }
-];
 
 async function uploadFiles(
   tableName: string,
@@ -41,7 +30,7 @@ async function uploadFiles(
   return uploadedTables;
 }
 
-async function main() {
+export default async function main() {
   const uploadedTables: UploadedFileDetails[] = [];
   const thisDate = new Date().toISOString().split('T')[0];
   const newUploadFolderName = `upload-${thisDate}`;
@@ -65,4 +54,6 @@ async function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
