@@ -39,6 +39,8 @@ export default class QueryIndexer {
   }
 
   private async splitChunks() {
+    const totalCount = await this.qm.getTotalCount(this.table);
+    console.log(`Total rows: ${totalCount}`);
     const { max, min } = await this.qm.getMaxMinCreated(this.table);
 
     const normalizedMinDate = new Date(min * 1000);

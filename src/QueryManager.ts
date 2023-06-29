@@ -18,6 +18,7 @@ export interface IQueryMeta {
 
 export interface IQueryManager {
   getCountOfChunk(table: ITableQueryDetails, meta: IQueryMeta): Promise<number>;
+  getTotalCount(table: ITableQueryDetails): Promise<number>;
   fetchChunk(table: ITableQueryDetails, meta: IQueryMeta): Promise<[string[], any[]]>;
   getMaxMinCreated(table: ITableQueryDetails): Promise<{ max: number; min: number }>;
 }
@@ -29,6 +30,14 @@ class QueryManager implements IQueryManager {
     const [[countData]]: [RowDataPacket[], FieldPacket[]] = await db.query(
       `SELECT COUNT(*) FROM ${table.name} WHERE ${table.createdField} >= ? AND ${table.createdField} < ?`,
       [startDate, endDate]
+    );
+    return countData[selector];
+  }
+
+  async getTotalCount(table: ITableQueryDetails): Promise<number> {
+    const selector = `COUNT(*)`;
+    const [[countData]]: [RowDataPacket[], FieldPacket[]] = await db.query(
+      `SELECT COUNT(*) FROM ${table.name}`
     );
     return countData[selector];
   }
