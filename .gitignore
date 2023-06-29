@@ -5,5 +5,5 @@ dist
 .env
 
 tmp
-uploads
+uploads*
 dune
