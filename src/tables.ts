@@ -8,6 +8,6 @@ export default [
   {
     name: 'votes',
     createdField: 'created',
-    skip: (row: RowDataPacket) => row.space === 'linea-build.eth'
+    skip: (row: RowDataPacket) => row.space.trim() === 'linea-build.eth'
   }
 ];
