@@ -39,7 +39,7 @@ export async function writeChunkToCSV(columns: string[], data: any[], chunkN: nu
     )
   );
 
-  const writer = csvWriter.createObjectCsvWriter({
+  const writer = getCSVWriter({
     path: dist,
     header: columns.map(column => ({ id: column, title: column })),
     append: false,
@@ -98,11 +98,11 @@ export async function mergeCSVFiles(
 
         outputFilePaths.push(outputFilePath);
 
-        writer = csvWriter.createObjectCsvWriter({
+        writer = getCSVWriter({
           path: outputFilePath,
           header: headers.map(key => ({ id: key, title: key })),
           append: false,
-          alwaysQuote: true
+          alwaysQuote: false
         });
       }
 
@@ -120,4 +120,24 @@ export async function mergeCSVFiles(
   }
 
   return outputFilePaths;
+}
+
+function getCSVWriter(config: any): any {
+  const writer = csvWriter.createObjectCsvWriter(config);
+
+  // monkey patching csv-writer to support numbers
+  // @ts-ignore
+  writer.csvStringifier.fieldStringifier.stringify = function (value: string) {
+    // @ts-ignore
+    if (this.isEmpty(value)) {
+      return '';
+    }
+    if (typeof value === 'string' && (value.startsWith('0x') || value.startsWith('0X'))) {
+      // @ts-ignore
+      return this.quoteField(String(value));
+    }
+    const number = Number(value);
+    // @ts-ignore
+    return Number.isNaN(number) ? this.quoteField(String(value)) : number;
+  };
 }
